@@ -1,6 +1,13 @@
-# This is used to generate a .xlsx file containing location node information
-# Location: /sitecore/system/Modules/PowerShell/Script Library/SPE/Tools/Data Management/Toolbox/Data Management/Location Report
-# Last updated: 27 July 2022
+<#
+Script Name:    LocationReport
+Version:        1.1.0
+Author:         Jared Caraway (jared.caraway@kelsey-seybold.com)
+Date Updated:   10/03/2023
+Change Log:     10/03/23:   Initial version. Added date of creation to output; added timestamp to filename.
+
+Description:    This script iterates through all location pages and exports a spreadsheet in
+                XLSX format.
+#>
 
 Import-Function -Name ConvertTo-Xlsx
 f
