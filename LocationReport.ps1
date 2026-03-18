@@ -1,6 +1,6 @@
 <#
  Script Name : LocationsReport
- Version     : 1.9.0
+ Version     : 2.0.0
  Description : Exports Location items (NO RECURSION)
                - Outputs media/link fields as plain public URLs
                - Normalizes /sitecore/shell and relative media URLs to https://www.kelsey-seybold.com
@@ -204,7 +204,7 @@ function Get-Checkbox {
 # ------------------ Field Order (as provided) -------------------------
 
 $fields = @(
- "BrowserTitle","LocationName","BannerImage","AddressLine1","AddressLine2",
+ "LocationName","BannerImage","AddressLine1","AddressLine2",
  "City","State","ZipCode","Latitude","Longitude","PhoneNumber","AboutThisLocation",
  "MedicalSpecialties","Services","Accreditations","Amenities","Hours","Directions",
  "DrivingDirectionsLink","DrivingDirectionsPDF","ParkingInformationLink",
@@ -320,6 +320,16 @@ foreach ($item in $items) {
                     $campusRow = [ordered]@{}
                     foreach ($key in $row.Keys) { $campusRow[$key] = $row[$key] }
 
+                    # Blank out all inherited fields — building rows only show facility-specific data
+                    $facilityOnlyFields = @("LocationName","BannerImage","AddressLine1","AddressLine2",
+                                            "City","State","ZipCode","GetDirections","Campus Facilities",
+                                            "Campus Location","PublishStatus","LocationUrl")
+                    foreach ($key in $row.Keys) {
+                        if ($key -notin $facilityOnlyFields) {
+                            $campusRow[$key] = ""
+                        }
+                    }
+
                     # Override LocationName with facility name
                     $facilityName = $facility["CampusFacilityName"]
                     if (-not [string]::IsNullOrWhiteSpace($facilityName)) {
@@ -331,28 +341,17 @@ foreach ($item in $items) {
                     $campusRow["Campus Facilities"] = $facility.DisplayName
 
                     # Map CampusFacility fields to report columns
-                    $facilityFieldMap = @{
-                        "CampusFacilityAddressLineOne" = "AddressLine1"
-                        "CampusFacilityAddressLineTwo" = "AddressLine2"
-                        "CampusFacilityCity"           = "City"
-                        "CampusFacilityState"          = "State"
-                        "CampusFacilityZipCode"        = "ZipCode"
-                    }
-                    foreach ($src in $facilityFieldMap.Keys) {
-                        $val = $facility[$src]
-                        if (-not [string]::IsNullOrWhiteSpace($val)) {
-                            $campusRow[$facilityFieldMap[$src]] = $val
-                        }
-                    }
+                    $campusRow["AddressLine1"] = $facility["CampusFacilityAddressLineOne"]
+                    $campusRow["AddressLine2"] = $facility["CampusFacilityAddressLineTwo"]
+                    $campusRow["City"]         = $facility["CampusFacilityCity"]
+                    $campusRow["State"]        = $facility["CampusFacilityState"]
+                    $campusRow["ZipCode"]      = $facility["CampusFacilityZipCode"]
 
                     # BannerImage from facility (Image field)
                     $campusRow["BannerImage"] = Get-MediaUrl -Item $facility -FieldName "CampusFacilityBannerImage"
 
                     # GetDirections from facility (General Link field)
-                    $dirLink = Get-LinkUrl -Item $facility -FieldName "CampusFacilityGetDirectionsLink"
-                    if (-not [string]::IsNullOrWhiteSpace($dirLink)) {
-                        $campusRow["GetDirections"] = $dirLink
-                    }
+                    $campusRow["GetDirections"] = Get-LinkUrl -Item $facility -FieldName "CampusFacilityGetDirectionsLink"
 
                     $report += New-Object psobject -Property $campusRow
                 }
@@ -380,12 +379,12 @@ Write-Host "Extraction finished. Processed: $processed, Skipped: $skipped, Faile
 # ------------------ Export & Download ---------------------
 
 # Ensure PublishStatus is the FIRST column,
-# then BrowserTitle + LocationName,
-# then **LocationUrl as the 4th column**,
+# then LocationName,
+# then **LocationUrl as the 3rd column**,
 # then the rest of the provided field order.
-$firstTwo = @("BrowserTitle","LocationName")
-$remaining = $fields | Where-Object { $_ -notin $firstTwo }
-$exportColumns = @("PublishStatus") + $firstTwo + @("LocationUrl") + $remaining
+$first = @("LocationName")
+$remaining = $fields | Where-Object { $_ -notin $first }
+$exportColumns = @("PublishStatus") + $first + @("LocationUrl") + $remaining
 
 Write-Host "Building XLSX..."
 [byte[]]$xlsx = $report |
