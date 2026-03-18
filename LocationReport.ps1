@@ -1,6 +1,6 @@
 <#
  Script Name : LocationsReport
- Version     : 1.8.0
+ Version     : 1.9.0
  Description : Exports Location items (NO RECURSION)
                - Outputs media/link fields as plain public URLs
                - Normalizes /sitecore/shell and relative media URLs to https://www.kelsey-seybold.com
@@ -320,18 +320,38 @@ foreach ($item in $items) {
                     $campusRow = [ordered]@{}
                     foreach ($key in $row.Keys) { $campusRow[$key] = $row[$key] }
 
-                    # Override LocationName to include building
-                    $campusRow["LocationName"] = "$($row['LocationName']) - $($facility.DisplayName)"
+                    # Override LocationName with facility name
+                    $facilityName = $facility["CampusFacilityName"]
+                    if (-not [string]::IsNullOrWhiteSpace($facilityName)) {
+                        $campusRow["LocationName"] = "$($row['LocationName']) - $facilityName"
+                    } else {
+                        $campusRow["LocationName"] = "$($row['LocationName']) - $($facility.DisplayName)"
+                    }
                     # Single facility name for this row
                     $campusRow["Campus Facilities"] = $facility.DisplayName
 
-                    # Pull address fields from the facility item if available
-                    $addressFields = @("AddressLine1","AddressLine2","City","State","ZipCode","Latitude","Longitude")
-                    foreach ($af in $addressFields) {
-                        $val = $facility[$af]
+                    # Map CampusFacility fields to report columns
+                    $facilityFieldMap = @{
+                        "CampusFacilityAddressLineOne" = "AddressLine1"
+                        "CampusFacilityAddressLineTwo" = "AddressLine2"
+                        "CampusFacilityCity"           = "City"
+                        "CampusFacilityState"          = "State"
+                        "CampusFacilityZipCode"        = "ZipCode"
+                    }
+                    foreach ($src in $facilityFieldMap.Keys) {
+                        $val = $facility[$src]
                         if (-not [string]::IsNullOrWhiteSpace($val)) {
-                            $campusRow[$af] = $val
+                            $campusRow[$facilityFieldMap[$src]] = $val
                         }
+                    }
+
+                    # BannerImage from facility (Image field)
+                    $campusRow["BannerImage"] = Get-MediaUrl -Item $facility -FieldName "CampusFacilityBannerImage"
+
+                    # GetDirections from facility (General Link field)
+                    $dirLink = Get-LinkUrl -Item $facility -FieldName "CampusFacilityGetDirectionsLink"
+                    if (-not [string]::IsNullOrWhiteSpace($dirLink)) {
+                        $campusRow["GetDirections"] = $dirLink
                     }
 
                     $report += New-Object psobject -Property $campusRow
