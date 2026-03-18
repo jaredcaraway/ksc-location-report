@@ -1,6 +1,6 @@
 <#
  Script Name : LocationsReport
- Version     : 1.6.0
+ Version     : 1.8.0
  Description : Exports Location items (NO RECURSION)
                - Outputs media/link fields as plain public URLs
                - Normalizes /sitecore/shell and relative media URLs to https://www.kelsey-seybold.com
@@ -8,6 +8,8 @@
                - Adds **LocationUrl** using canonical pattern:
                  https://www.kelsey-seybold.com/find-a-location/[item-name-slug]
                - **Places LocationUrl as 4th column** in the export
+               - Campus locations expand into one row per building in Campus Facilities
+                 (e.g. "Summer Creek Campus - Building A")
 #>
 
 Import-Function -Name ConvertTo-Xlsx
@@ -303,8 +305,49 @@ foreach ($item in $items) {
         # Publish status (first column in export)
         $row["PublishStatus"] = if ($item["__Never publish"] -eq "1") { "Never publish" } else { "Published" }
 
-        $report += New-Object psobject -Property $row
-        $processed++
+        # --- Campus expansion: one row per building ---
+        $isCampus = Get-Checkbox -Item $item -FieldName "Campus Location"
+
+        if ($isCampus) {
+            $facilityItems = @()
+            try {
+                $ml = New-Object Sitecore.Data.Fields.MultilistField($item.Fields["Campus Facilities"])
+                if ($ml) { $facilityItems = $ml.GetItems() }
+            } catch {}
+
+            if ($facilityItems.Count -gt 0) {
+                foreach ($facility in $facilityItems) {
+                    $campusRow = [ordered]@{}
+                    foreach ($key in $row.Keys) { $campusRow[$key] = $row[$key] }
+
+                    # Override LocationName to include building
+                    $campusRow["LocationName"] = "$($row['LocationName']) - $($facility.DisplayName)"
+                    # Single facility name for this row
+                    $campusRow["Campus Facilities"] = $facility.DisplayName
+
+                    # Pull address fields from the facility item if available
+                    $addressFields = @("AddressLine1","AddressLine2","City","State","ZipCode","Latitude","Longitude")
+                    foreach ($af in $addressFields) {
+                        $val = $facility[$af]
+                        if (-not [string]::IsNullOrWhiteSpace($val)) {
+                            $campusRow[$af] = $val
+                        }
+                    }
+
+                    $report += New-Object psobject -Property $campusRow
+                }
+                $processed++
+            }
+            else {
+                # Campus with no facilities — emit single row as-is
+                $report += New-Object psobject -Property $row
+                $processed++
+            }
+        }
+        else {
+            $report += New-Object psobject -Property $row
+            $processed++
+        }
     }
     catch {
         Write-Warning "FAILED on item $($item.Paths.Path) -- $($_.Exception.Message)"
