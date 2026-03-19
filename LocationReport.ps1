@@ -348,23 +348,17 @@ foreach ($item in $items) {
                     # GetDirections from facility (General Link field)
                     $campusRow["GetDirections"] = Get-LinkUrl -Item $facility -FieldName "CampusFacilityGetDirectionsLink"
 
-                    $campusRow["LocationName"] = "=HYPERLINK(""$locationUrl"",""$($campusRow['LocationName'])"")"
-                    $campusRow["LocationUrl"]  = "=HYPERLINK(""$locationUrl"",""$locationUrl"")"
                     $report += New-Object psobject -Property $campusRow
                 }
                 $processed++
             }
             else {
                 # Campus with no facilities — emit single row as-is
-                $row["LocationName"] = "=HYPERLINK(""$locationUrl"",""$($row['LocationName'])"")"
-                $row["LocationUrl"]  = "=HYPERLINK(""$locationUrl"",""$locationUrl"")"
                 $report += New-Object psobject -Property $row
                 $processed++
             }
         }
         else {
-            $row["LocationName"] = "=HYPERLINK(""$locationUrl"",""$($row['LocationName'])"")"
-            $row["LocationUrl"]  = "=HYPERLINK(""$locationUrl"",""$locationUrl"")"
             $report += New-Object psobject -Property $row
             $processed++
         }
@@ -388,6 +382,36 @@ Write-Host "Building XLSX..."
 [byte[]]$xlsx = $report |
     Select-Object -Property $exportColumns |
     ConvertTo-Xlsx
+
+# Post-process: set native EPPlus hyperlinks on LocationName and LocationUrl columns
+Write-Host "Applying hyperlinks..."
+$ms = New-Object System.IO.MemoryStream(,$xlsx)
+$pkg = New-Object OfficeOpenXml.ExcelPackage($ms)
+$ws = $pkg.Workbook.Worksheets[1]
+
+$nameCol = $null; $urlCol = $null
+for ($c = 1; $c -le $ws.Dimension.End.Column; $c++) {
+    switch ($ws.Cells[1,$c].Value) {
+        "LocationName" { $nameCol = $c }
+        "LocationUrl"  { $urlCol  = $c }
+    }
+}
+
+if ($nameCol -and $urlCol) {
+    for ($r = 2; $r -le $ws.Dimension.End.Row; $r++) {
+        $url = $ws.Cells[$r,$urlCol].Value
+        if (-not [string]::IsNullOrWhiteSpace($url)) {
+            $uri = [Uri]$url
+            $ws.Cells[$r,$nameCol].Hyperlink = $uri
+            $ws.Cells[$r,$urlCol].Hyperlink  = $uri
+        }
+    }
+}
+
+$outMs = New-Object System.IO.MemoryStream
+$pkg.SaveAs($outMs)
+[byte[]]$xlsx = $outMs.ToArray()
+$pkg.Dispose(); $ms.Dispose(); $outMs.Dispose()
 
 $stamp = Get-Date -Format "MM-dd-yyyy_HH-mm-ss"
 $filename = "$stamp`_LocationsReport.xlsx"
