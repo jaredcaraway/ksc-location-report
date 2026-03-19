@@ -1,15 +1,16 @@
 <#
  Script Name : LocationsReport
- Version     : 2.0.0
+ Version     : 2.1.0
+ Date Updated: 03/19/2026
  Description : Exports Location items (NO RECURSION)
+               - Only includes published locations (__Never publish != "1")
                - Outputs media/link fields as plain public URLs
                - Normalizes /sitecore/shell and relative media URLs to https://www.kelsey-seybold.com
-               - Adds PublishStatus (first column)
                - Adds **LocationUrl** using canonical pattern:
                  https://www.kelsey-seybold.com/find-a-location/[item-name-slug]
-               - **Places LocationUrl as 4th column** in the export
                - Campus locations expand into one row per building in Campus Facilities
                  (e.g. "Summer Creek Campus - Building A")
+               - Streamlined column set (removed image, Google tour, directions, and coordinate fields)
 #>
 
 Import-Function -Name ConvertTo-Xlsx
