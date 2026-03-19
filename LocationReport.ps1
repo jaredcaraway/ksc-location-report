@@ -1,6 +1,6 @@
 <#
  Script Name : LocationsReport
- Version     : 2.3.0
+ Version     : 2.4.0
  Date Updated: 03/19/2026
  Description : Exports Location items (NO RECURSION)
                - Only includes published locations (__Never publish != "1")
@@ -11,7 +11,7 @@
                - Campus locations expand into one row per building in Campus Facilities
                  (e.g. "Summer Creek Campus - Building A")
                - Streamlined column set (removed image, Google tour, directions, and coordinate fields)
-               - LocationUrl and BannerImage render as clickable hyperlinks via EPPlus post-processing
+               - URL columns (LocationUrl, BannerImage, etc.) output as plain text
 #>
 
 Import-Function -Name ConvertTo-Xlsx
@@ -383,40 +383,6 @@ Write-Host "Building XLSX..."
 [byte[]]$xlsx = $report |
     Select-Object -Property $exportColumns |
     ConvertTo-Xlsx
-
-# Post-process: set native EPPlus hyperlinks on LocationUrl and BannerImage columns
-Write-Host "Applying hyperlinks..."
-$ms = New-Object System.IO.MemoryStream(,$xlsx)
-$pkg = New-Object OfficeOpenXml.ExcelPackage($ms)
-$ws = $pkg.Workbook.Worksheets[1]
-
-$urlCol = $null; $bannerCol = $null
-for ($c = 1; $c -le $ws.Dimension.End.Column; $c++) {
-    switch ($ws.Cells[1,$c].Value) {
-        "LocationUrl"  { $urlCol    = $c }
-        "BannerImage"  { $bannerCol = $c }
-    }
-}
-
-for ($r = 2; $r -le $ws.Dimension.End.Row; $r++) {
-    if ($urlCol) {
-        $url = $ws.Cells[$r,$urlCol].Value
-        if (-not [string]::IsNullOrWhiteSpace($url)) {
-            $ws.Cells[$r,$urlCol].Hyperlink = [Uri]$url
-        }
-    }
-    if ($bannerCol) {
-        $bannerUrl = $ws.Cells[$r,$bannerCol].Value
-        if (-not [string]::IsNullOrWhiteSpace($bannerUrl)) {
-            $ws.Cells[$r,$bannerCol].Hyperlink = [Uri]$bannerUrl
-        }
-    }
-}
-
-$outMs = New-Object System.IO.MemoryStream
-$pkg.SaveAs($outMs)
-[byte[]]$xlsx = $outMs.ToArray()
-$pkg.Dispose(); $ms.Dispose(); $outMs.Dispose()
 
 $stamp = Get-Date -Format "MM-dd-yyyy_HH-mm-ss"
 $filename = "$stamp`_LocationsReport.xlsx"
