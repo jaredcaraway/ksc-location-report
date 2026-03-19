@@ -1,6 +1,6 @@
 <#
  Script Name : LocationsReport
- Version     : 2.1.0
+ Version     : 2.2.0
  Date Updated: 03/19/2026
  Description : Exports Location items (NO RECURSION)
                - Only includes published locations (__Never publish != "1")
@@ -11,6 +11,7 @@
                - Campus locations expand into one row per building in Campus Facilities
                  (e.g. "Summer Creek Campus - Building A")
                - Streamlined column set (removed image, Google tour, directions, and coordinate fields)
+               - LocationName and LocationUrl render as clickable hyperlinks via EPPlus post-processing
 #>
 
 Import-Function -Name ConvertTo-Xlsx
