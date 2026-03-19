@@ -205,18 +205,11 @@ function Get-Checkbox {
 
 $fields = @(
  "LocationName","BannerImage","AddressLine1","AddressLine2",
- "City","State","ZipCode","Latitude","Longitude","PhoneNumber","AboutThisLocation",
- "MedicalSpecialties","Services","Accreditations","Amenities","Hours","Directions",
- "DrivingDirectionsLink","DrivingDirectionsPDF","ParkingInformationLink",
+ "City","State","ZipCode","PhoneNumber","AboutThisLocation",
+ "MedicalSpecialties","Services","Accreditations","Amenities","Hours",
  "ParkingInformationPDF","DepartmentID","VisitTypes","GetDirections","ThumbnailImage",
  "ClinicStatusOverlay","LocationType","LinkOne","LinkTwo","LinkThree",
  "Can Schedule Appointments","SchedulePediAsAdult","SadtSpecialties","Our Experts",
- "ImageOne","ImageOneCaption","ImageTwo","ImageTwoCaption","ImageThree",
- "ImageThreeCaption","ImageFour","ImageFourCaption","ImageFive","ImageFiveCaption",
- "ImageSix","ImageSixCaption","ImageSeven","ImageSevenCaption","ImageEight",
- "ImageEightCaption","ImageNine","ImageNineCaption","ImageTen","ImageTenCaption",
- "GoogleTourOne","GoogleTourOneCaption","GoogleTourTwo","GoogleTourTwoCaption",
- "GoogleTourThree","GoogleTourThreeCaption","GoogleTourFour","GoogleTourFourCaption",
  "AccordionTitle","AccordionContent","AlertStrip","Campus Location",
  "Campus Facilities","Campus Short Description","GoalNameForLocation",
  "EidForLocation"
@@ -302,9 +295,6 @@ foreach ($item in $items) {
         # Canonical Location URL based on Item Name
         $row["LocationUrl"] = Convert-ItemNameToLocationUrl -ItemName $item.Name
 
-        # Publish status (first column in export)
-        $row["PublishStatus"] = if ($item["__Never publish"] -eq "1") { "Never publish" } else { "Published" }
-
         # --- Campus expansion: one row per building ---
         $isCampus = Get-Checkbox -Item $item -FieldName "Campus Location"
 
@@ -323,7 +313,7 @@ foreach ($item in $items) {
                     # Blank out all inherited fields — building rows only show facility-specific data
                     $facilityOnlyFields = @("LocationName","BannerImage","AddressLine1","AddressLine2",
                                             "City","State","ZipCode","GetDirections","Campus Facilities",
-                                            "Campus Location","PublishStatus","LocationUrl")
+                                            "Campus Location","LocationUrl")
                     foreach ($key in $row.Keys) {
                         if ($key -notin $facilityOnlyFields) {
                             $campusRow[$key] = ""
@@ -378,13 +368,10 @@ Write-Host "Extraction finished. Processed: $processed, Skipped: $skipped, Faile
 
 # ------------------ Export & Download ---------------------
 
-# Ensure PublishStatus is the FIRST column,
-# then LocationName,
-# then **LocationUrl as the 3rd column**,
-# then the rest of the provided field order.
+# Ensure LocationName is first, LocationUrl second, then remaining fields.
 $first = @("LocationName")
 $remaining = $fields | Where-Object { $_ -notin $first }
-$exportColumns = @("PublishStatus") + $first + @("LocationUrl") + $remaining
+$exportColumns = $first + @("LocationUrl") + $remaining
 
 Write-Host "Building XLSX..."
 [byte[]]$xlsx = $report |
