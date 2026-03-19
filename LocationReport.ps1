@@ -297,7 +297,8 @@ foreach ($item in $items) {
         }
 
         # Canonical Location URL based on Item Name
-        $row["LocationUrl"] = Convert-ItemNameToLocationUrl -ItemName $item.Name
+        $locationUrl = Convert-ItemNameToLocationUrl -ItemName $item.Name
+        $row["LocationUrl"] = $locationUrl
 
         # --- Campus expansion: one row per building ---
         $isCampus = Get-Checkbox -Item $item -FieldName "Campus Location"
@@ -347,17 +348,23 @@ foreach ($item in $items) {
                     # GetDirections from facility (General Link field)
                     $campusRow["GetDirections"] = Get-LinkUrl -Item $facility -FieldName "CampusFacilityGetDirectionsLink"
 
+                    $campusRow["LocationName"] = "=HYPERLINK(""$locationUrl"",""$($campusRow['LocationName'])"")"
+                    $campusRow["LocationUrl"]  = "=HYPERLINK(""$locationUrl"",""$locationUrl"")"
                     $report += New-Object psobject -Property $campusRow
                 }
                 $processed++
             }
             else {
                 # Campus with no facilities — emit single row as-is
+                $row["LocationName"] = "=HYPERLINK(""$locationUrl"",""$($row['LocationName'])"")"
+                $row["LocationUrl"]  = "=HYPERLINK(""$locationUrl"",""$locationUrl"")"
                 $report += New-Object psobject -Property $row
                 $processed++
             }
         }
         else {
+            $row["LocationName"] = "=HYPERLINK(""$locationUrl"",""$($row['LocationName'])"")"
+            $row["LocationUrl"]  = "=HYPERLINK(""$locationUrl"",""$locationUrl"")"
             $report += New-Object psobject -Property $row
             $processed++
         }
