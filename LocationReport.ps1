@@ -240,6 +240,9 @@ foreach ($item in $items) {
         $isLocation = $item.Fields["LocationName"] -ne $null -or $item.TemplateName -like "*Location*"
         if (-not $isLocation) { $skipped++; continue }
 
+        # Only include published locations
+        if ($item["__Never publish"] -eq "1") { $skipped++; continue }
+
         Write-Host "Processing: $($item.Paths.Path)"
 
         $row = [ordered]@{}
