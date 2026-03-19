@@ -1,6 +1,6 @@
 <#
  Script Name : LocationsReport
- Version     : 2.2.0
+ Version     : 2.3.0
  Date Updated: 03/19/2026
  Description : Exports Location items (NO RECURSION)
                - Only includes published locations (__Never publish != "1")
@@ -11,7 +11,7 @@
                - Campus locations expand into one row per building in Campus Facilities
                  (e.g. "Summer Creek Campus - Building A")
                - Streamlined column set (removed image, Google tour, directions, and coordinate fields)
-               - LocationName and LocationUrl render as clickable hyperlinks via EPPlus post-processing
+               - LocationUrl and BannerImage render as clickable hyperlinks via EPPlus post-processing
 #>
 
 Import-Function -Name ConvertTo-Xlsx
@@ -384,27 +384,31 @@ Write-Host "Building XLSX..."
     Select-Object -Property $exportColumns |
     ConvertTo-Xlsx
 
-# Post-process: set native EPPlus hyperlinks on LocationName and LocationUrl columns
+# Post-process: set native EPPlus hyperlinks on LocationUrl and BannerImage columns
 Write-Host "Applying hyperlinks..."
 $ms = New-Object System.IO.MemoryStream(,$xlsx)
 $pkg = New-Object OfficeOpenXml.ExcelPackage($ms)
 $ws = $pkg.Workbook.Worksheets[1]
 
-$nameCol = $null; $urlCol = $null
+$urlCol = $null; $bannerCol = $null
 for ($c = 1; $c -le $ws.Dimension.End.Column; $c++) {
     switch ($ws.Cells[1,$c].Value) {
-        "LocationName" { $nameCol = $c }
-        "LocationUrl"  { $urlCol  = $c }
+        "LocationUrl"  { $urlCol    = $c }
+        "BannerImage"  { $bannerCol = $c }
     }
 }
 
-if ($nameCol -and $urlCol) {
-    for ($r = 2; $r -le $ws.Dimension.End.Row; $r++) {
+for ($r = 2; $r -le $ws.Dimension.End.Row; $r++) {
+    if ($urlCol) {
         $url = $ws.Cells[$r,$urlCol].Value
         if (-not [string]::IsNullOrWhiteSpace($url)) {
-            $uri = [Uri]$url
-            $ws.Cells[$r,$nameCol].Hyperlink = $uri
-            $ws.Cells[$r,$urlCol].Hyperlink  = $uri
+            $ws.Cells[$r,$urlCol].Hyperlink = [Uri]$url
+        }
+    }
+    if ($bannerCol) {
+        $bannerUrl = $ws.Cells[$r,$bannerCol].Value
+        if (-not [string]::IsNullOrWhiteSpace($bannerUrl)) {
+            $ws.Cells[$r,$bannerCol].Hyperlink = [Uri]$bannerUrl
         }
     }
 }
